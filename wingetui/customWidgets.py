@@ -66,16 +66,16 @@ class CustomLineEdit(QLineEdit):
         m.exec(arg__1.globalPos())
 
     def updateTextColor(self, text: str) -> None:
-        if text == "":
+        if not text:
             self.startStyleSheet = super().styleSheet()
-            super().setStyleSheet(self.startStyleSheet+"color: grey;")
+            super().setStyleSheet(f"{self.startStyleSheet}color: grey;")
         else:
             super().setStyleSheet(self.startStyleSheet)
 
     def setStyleSheet(self, styleSheet: str) -> None:
         if self.text() == "":
             self.startStyleSheet = styleSheet
-            super().setStyleSheet(self.startStyleSheet+"color: grey;")
+            super().setStyleSheet(f"{self.startStyleSheet}color: grey;")
         else:
             super().setStyleSheet(self.startStyleSheet)
 
@@ -271,29 +271,30 @@ class ErrorMessage(QMainWindow):
         self.hide()
 
     def moreInfo(self):
-        if not self.isQuestion:
-            spacingAdded = False
-            self.moreInfoTextArea.setVisible(not self.moreInfoTextArea.isVisible())
-            self.moreInfoButton.setText(_("Hide details") if self.moreInfoTextArea.isVisible() else _("Show details"))
-            if self.moreInfoTextArea.isVisible():
-                # show textedit
-                s = self.size()
-                spacingAdded = True
-                self.resize(s)
-                self.setMinimumWidth(450)
-                self.setMinimumHeight(self.bgw1.sizeHint().height())
-                self.setMaximumHeight(2048)
-            else:
-                # Hide textedit
-                s = self.size()
-                s.setHeight(s.height() - self.moreInfoTextArea.height() - self.layout().spacing())
-                self.setMaximumSize(s)
-                self.resize(s)
-                self.setMaximumSize(2048, 2048)
-                self.setMinimumWidth(450)
-                self.setFixedHeight(self.fHeight)
-                self.setMinimumHeight(self.fHeight)
-                self.setMaximumHeight(self.fHeight+1)
+        if self.isQuestion:
+            return
+        spacingAdded = False
+        self.moreInfoTextArea.setVisible(not self.moreInfoTextArea.isVisible())
+        self.moreInfoButton.setText(_("Hide details") if self.moreInfoTextArea.isVisible() else _("Show details"))
+        if self.moreInfoTextArea.isVisible():
+            # show textedit
+            s = self.size()
+            spacingAdded = True
+            self.resize(s)
+            self.setMinimumWidth(450)
+            self.setMinimumHeight(self.bgw1.sizeHint().height())
+            self.setMaximumHeight(2048)
+        else:
+            # Hide textedit
+            s = self.size()
+            s.setHeight(s.height() - self.moreInfoTextArea.height() - self.layout().spacing())
+            self.setMaximumSize(s)
+            self.resize(s)
+            self.setMaximumSize(2048, 2048)
+            self.setMinimumWidth(450)
+            self.setFixedHeight(self.fHeight)
+            self.setMinimumHeight(self.fHeight)
+            self.setMaximumHeight(self.fHeight+1)
             
     def paintEvent(self, event: QPaintEvent) -> None:
         self.bgw1.setFixedHeight(self.bgw1.sizeHint().height())
@@ -381,7 +382,7 @@ class ErrorMessage(QMainWindow):
         self.qanswer = -1
         while self.qanswer == -1:
             time.sleep(0.05)
-        return True if self.qanswer == 1 else False
+        return self.qanswer == 1
     
     def aq(self, questionData: dict):
         self.setWindowTitle(questionData["titlebarTitle"])
@@ -409,16 +410,10 @@ class ErrorMessage(QMainWindow):
             except AttributeError:
                 print("Parent has no window!")
         if wExists:
-            if wVisible:
-                self.show()
-                globals.app.beep()
-            else:
+            if not wVisible:
                 globals.mainWindow.showWindow()
-                self.show()
-                globals.app.beep()
-        else:
-            self.show()
-            globals.app.beep()
+        self.show()
+        globals.app.beep()
             
             
     def mousePressEvent(self, event: QMouseEvent) -> None:
@@ -631,7 +626,7 @@ class QSettingsTitle(QWidget):
             self.descLabel.setStyleSheet(f"font-size: 8pt;background: none;font-family: \"Segoe UI Variable Text\";")
 
         self.image = QLabel(self)
-        self.image.setStyleSheet(f"padding: 1px;background: transparent;")
+        self.image.setStyleSheet("padding: 1px;background: transparent;")
         self.setAttribute(Qt.WA_StyledBackground)
         self.compressibleWidget = QWidget(self)
         self.compressibleWidget.show()
@@ -675,8 +670,12 @@ class QSettingsTitle(QWidget):
         self.button = QPushButton("", self)
         self.button.setObjectName("subtitleLabelHover")
         self.button.clicked.connect(self.toggleChilds)
-        self.button.setStyleSheet(f"border-bottom-left-radius: 0;border-bottom-right-radius: 0;")
-        self.button.setStyleSheet(f"border-bottom-left-radius: 8px;border-bottom-right-radius: 8px;")
+        self.button.setStyleSheet(
+            "border-bottom-left-radius: 0;border-bottom-right-radius: 0;"
+        )
+        self.button.setStyleSheet(
+            "border-bottom-left-radius: 8px;border-bottom-right-radius: 8px;"
+        )
         self.setChildFixedHeight(0)
 
         self.newShowAnim = QVariantAnimation(self)
@@ -731,12 +730,27 @@ class QSettingsTitle(QWidget):
             self.childsVisible = False
             self.invertNotAnimated()
             self.showHideButton.setIcon(QIcon(getMedia("collapse")))
-            Thread(target=lambda: (time.sleep(0.2),self.button.setStyleSheet(f"border-bottom-left-radius: 8px;border-bottom-right-radius: 8px;"),self.bg70.setStyleSheet(f"border-bottom-left-radius: 8px;border-bottom-right-radius: 8px;")), daemon=True).start()
+            Thread(
+                target=lambda: (
+                    time.sleep(0.2),
+                    self.button.setStyleSheet(
+                        "border-bottom-left-radius: 8px;border-bottom-right-radius: 8px;"
+                    ),
+                    self.bg70.setStyleSheet(
+                        "border-bottom-left-radius: 8px;border-bottom-right-radius: 8px;"
+                    ),
+                ),
+                daemon=True,
+            ).start()
             Thread(target=self.hideChildren).start()
         else:
             self.showHideButton.setIcon(QIcon(getMedia("expand")))
-            self.button.setStyleSheet(f"border-bottom-left-radius: 0;border-bottom-right-radius: 0;")
-            self.bg70.setStyleSheet(f"border-bottom-left-radius: 0;border-bottom-right-radius: 0;")
+            self.button.setStyleSheet(
+                "border-bottom-left-radius: 0;border-bottom-right-radius: 0;"
+            )
+            self.bg70.setStyleSheet(
+                "border-bottom-left-radius: 0;border-bottom-right-radius: 0;"
+            )
             self.invertNotAnimated()
             self.childsVisible = True
             Thread(target=self.showChildren).start()
@@ -821,7 +835,7 @@ class QSettingsButton(QWidget):
         super().__init__(parent)
         self.fh = h
         self.setAttribute(Qt.WA_StyledBackground)
-        self.button = QPushButton(btntext+" ", self)
+        self.button = QPushButton(f"{btntext} ", self)
         self.button.setLayoutDirection(Qt.RightToLeft)
         self.setObjectName("stBtn")
         self.label = QLabel("\u200e"+text, self)
@@ -854,7 +868,7 @@ class QSettingsButton(QWidget):
         self.button.setIcon(icon)
 
     def text(self) -> str:
-        return self.label.text() + " " + self.button.text()
+        return f"{self.label.text()} {self.button.text()}"
 
 class QSettingsComboBox(QWidget):
     textChanged = Signal(str)
@@ -921,7 +935,7 @@ class QSettingsComboBox(QWidget):
 
     def toggleRestartButton(self, force = None) -> None:
         if self.buttonOn:
-            if (force == None):
+            if force is None:
                 force = self.restartButton.isHidden
             if (force == True):
                 self.restartButton.show()
@@ -929,7 +943,7 @@ class QSettingsComboBox(QWidget):
                 self.restartButton.hide()
 
     def text(self) -> str:
-        return self.label.text() + " " + self.combobox.currentText()
+        return f"{self.label.text()} {self.combobox.currentText()}"
 
 class QSettingsCheckBox(QWidget):
     stateChanged = Signal(bool)

@@ -37,7 +37,11 @@ try:
                 titlewidget = QHBoxLayout()
                 titlewidget.addStretch()
                 icon = QLabel()
-                icon.setPixmap(QPixmap(realpath+"/resources/icon.png").scaledToWidth(128, Qt.TransformationMode.SmoothTransformation))
+                icon.setPixmap(
+                    QPixmap(f"{realpath}/resources/icon.png").scaledToWidth(
+                        128, Qt.TransformationMode.SmoothTransformation
+                    )
+                )
                 text = QLabel("WingetUI")
                 text.setStyleSheet(f"font-family: \"{globals.dispfont}\";font-weight: bold; color: {'white' if isDark() else 'black'};font-size: 50pt;")
                 titlewidget.addWidget(icon)
@@ -49,7 +53,7 @@ try:
                 self.loadingText.setStyleSheet(f"font-family: \"{globals.textfont}\"; color: {'white' if isDark() else 'black'};font-size: 12px;")
                 self.popup.layout().addWidget(self.loadingText)
                 ApplyMenuBlur(self.popup.winId().__int__(), self.popup)
-                
+
                 self.loadingProgressBar = QProgressBar(self.popup)
                 self.loadingProgressBar.setStyleSheet(f"""QProgressBar {{border-radius: 2px;height: 4px;border: 0px;background-color: transparent;}}QProgressBar::chunk {{background-color: rgb({colors[2 if isDark() else 3]});border-radius: 2px;}}""")
                 self.loadingProgressBar.setRange(0, 1000)
@@ -60,21 +64,21 @@ try:
                 self.setLoadBarValue.connect(self.loadingProgressBar.setValue)
                 self.startAnim.connect(lambda anim: anim.start())
                 self.changeBarOrientation.connect(lambda: self.loadingProgressBar.setInvertedAppearance(not(self.loadingProgressBar.invertedAppearance())))
-            
+
                 self.leftSlow = QVariantAnimation()
                 self.leftSlow.setStartValue(0)
                 self.leftSlow.setEndValue(1000)
                 self.leftSlow.setDuration(700)
                 self.leftSlow.valueChanged.connect(lambda v: self.loadingProgressBar.setValue(v))
                 self.leftSlow.finished.connect(lambda: (self.rightSlow.start(), self.changeBarOrientation.emit()))
-                
+
                 self.rightSlow = QVariantAnimation()
                 self.rightSlow.setStartValue(1000)
                 self.rightSlow.setEndValue(0)
                 self.rightSlow.setDuration(700)
                 self.rightSlow.valueChanged.connect(lambda v: self.loadingProgressBar.setValue(v))
                 self.rightSlow.finished.connect(lambda: (self.leftFast.start(), self.changeBarOrientation.emit()))
-                
+
                 self.leftFast = QVariantAnimation()
                 self.leftFast.setStartValue(0)
                 self.leftFast.setEndValue(1000)
@@ -88,7 +92,7 @@ try:
                 self.rightFast.setDuration(300)
                 self.rightFast.valueChanged.connect(lambda v: self.loadingProgressBar.setValue(v))
                 self.rightFast.finished.connect(lambda: (self.leftSlow.start(), self.changeBarOrientation.emit()))
-                
+
                 if not self.isDaemon:
                     self.leftSlow.start()
                     self.popup.show()
@@ -138,36 +142,36 @@ try:
                 print(globals.componentStatus)
 
         def checkForRunningInstances(self):
-                print("Scanning for instances...")
-                self.nowTime = time.time()
-                self.lockFileName = f"WingetUI_{self.nowTime}"
-                setSettings(self.lockFileName, True)
-                try:
-                    timestamps = [float(file.replace(os.path.join(os.path.join(os.path.expanduser("~"), ".wingetui"), "WingetUI_"), "")) for file in glob.glob(os.path.join(os.path.join(os.path.expanduser("~"), ".wingetui"), "WingetUI_*"))] # get a list with the timestamps
-                    validTimestamps = [timestamp for timestamp in timestamps if timestamp < self.nowTime]
-                    self.callInMain.emit(lambda: self.loadingText.setText(_("Checking found instace(s)...")))
-                    print("Found lock file(s), reactivating...")
-                    for tst in validTimestamps:
-                        setSettings("RaiseWindow_"+str(tst), True)
-                    if validTimestamps != [] and timestamps != [self.nowTime]:
-                        for i in range(16):
-                            time.sleep(0.1)
-                            self.callInMain.emit(lambda: self.loadingText.setText(_("Sent handshake. Waiting for instance listener's answer... ({0}%)").format(int(i/15*100))))
-                            for tst in validTimestamps:
-                                if not getSettings("RaiseWindow_"+str(tst), cache = False):
-                                    print(f"Instance {tst} responded, quitting...")
-                                    self.callInMain.emit(lambda: self.loadingText.setText(_("Instance {0} responded, quitting...").format(tst)))
-                                    setSettings(self.lockFileName, False)
-                                    self.kill.emit()
-                                    sys.exit(0)
-                        self.callInMain.emit(lambda: self.loadingText.setText(_("Starting daemons...")))
-                        print("Reactivation signal ignored: RaiseWindow_"+str(validTimestamps))
+            print("Scanning for instances...")
+            self.nowTime = time.time()
+            self.lockFileName = f"WingetUI_{self.nowTime}"
+            setSettings(self.lockFileName, True)
+            try:
+                timestamps = [float(file.replace(os.path.join(os.path.join(os.path.expanduser("~"), ".wingetui"), "WingetUI_"), "")) for file in glob.glob(os.path.join(os.path.join(os.path.expanduser("~"), ".wingetui"), "WingetUI_*"))] # get a list with the timestamps
+                validTimestamps = [timestamp for timestamp in timestamps if timestamp < self.nowTime]
+                self.callInMain.emit(lambda: self.loadingText.setText(_("Checking found instace(s)...")))
+                print("Found lock file(s), reactivating...")
+                for tst in validTimestamps:
+                    setSettings(f"RaiseWindow_{str(tst)}", True)
+                if validTimestamps != [] and timestamps != [self.nowTime]:
+                    for i in range(16):
+                        time.sleep(0.1)
+                        self.callInMain.emit(lambda: self.loadingText.setText(_("Sent handshake. Waiting for instance listener's answer... ({0}%)").format(int(i/15*100))))
                         for tst in validTimestamps:
-                            setSettings("RaiseWindow_"+str(tst), False)
-                            setSettings("WingetUI_"+str(tst), False)
-                except Exception as e:
-                    print(e)
-                self.loadStatus += 1
+                            if not getSettings(f"RaiseWindow_{str(tst)}", cache=False):
+                                print(f"Instance {tst} responded, quitting...")
+                                self.callInMain.emit(lambda: self.loadingText.setText(_("Instance {0} responded, quitting...").format(tst)))
+                                setSettings(self.lockFileName, False)
+                                self.kill.emit()
+                                sys.exit(0)
+                    self.callInMain.emit(lambda: self.loadingText.setText(_("Starting daemons...")))
+                    print(f"Reactivation signal ignored: RaiseWindow_{validTimestamps}")
+                    for tst in validTimestamps:
+                        setSettings(f"RaiseWindow_{str(tst)}", False)
+                        setSettings(f"WingetUI_{str(tst)}", False)
+            except Exception as e:
+                print(e)
+            self.loadStatus += 1
 
         def detectWinget(self):
             try:
@@ -243,16 +247,16 @@ try:
                 self.callInMain.emit(lambda: self.loadingText.setText(_("Downloading package metadata...")))
                 data = urlopen("https://raw.githubusercontent.com/marticliment/WingetUI/main/WebBasedData/screenshot-database.json").read()
                 try:
-                    os.makedirs(os.path.join(os.path.expanduser("~"), f".wingetui/cachedmeta"))
+                    os.makedirs(os.path.join(os.path.expanduser("~"), ".wingetui/cachedmeta"))
                 except FileExistsError:
                     pass
-                with open(os.path.join(os.path.expanduser("~"), f".wingetui/cachedmeta/packages.json"), "wb") as f:
+                with open(os.path.join(os.path.expanduser("~"), ".wingetui/cachedmeta/packages.json"), "wb") as f:
                     f.write(data)
                 print("🟢 Downloaded latest metadata to local file")
             except Exception as e:
                 report(e)
             try:
-                with open(os.path.join(os.path.expanduser("~"), f".wingetui/cachedmeta/packages.json"), "rb") as f:
+                with open(os.path.join(os.path.expanduser("~"), ".wingetui/cachedmeta/packages.json"), "rb") as f:
                     globals.packageMeta = json.load(f)
                 print("🔵 Loaded metadata from local file")
             except Exception as e:
@@ -265,7 +269,7 @@ try:
                 globals.trayIcon = QSystemTrayIcon()
                 self.trayIcon = globals.trayIcon
                 globals.app = self
-                self.trayIcon.setIcon(QIcon(realpath+"/resources/icon.png"))
+                self.trayIcon.setIcon(QIcon(f"{realpath}/resources/icon.png"))
                 self.trayIcon.setToolTip("WingetUI")
                 self.trayIcon.setVisible(True)
 
@@ -275,42 +279,42 @@ try:
                 self.discoverPackages = QAction(_("Discover Packages"), menu)
                 menu.addAction(self.discoverPackages)
                 menu.addSeparator()
-                
+
                 self.updatePackages = QAction(_("Software Updates"), menu)
                 globals.updatesAction = self.updatePackages
                 menu.addAction(self.updatePackages)
-                
+
                 self.updatesMenu = menu.addMenu(_("0 updates found"))
                 self.updatesMenu.menuAction().setIcon(QIcon(getMedia("list")))
                 self.updatesMenu.setParent(menu)
                 globals.trayMenuUpdatesList = self.updatesMenu
                 menu.addMenu(self.updatesMenu)
-                
+
                 globals.updatesHeader = QAction(f"{_('App Name')}  \t{_('Installed Version')} \t → \t {_('New version')}", menu)
                 globals.updatesHeader.setEnabled(False)
                 globals.updatesHeader.setIcon(QIcon(getMedia("version")))
                 self.updatesMenu.addAction(globals.updatesHeader)
-                
+
                 self.uaAction = QAction(_("Update all"), menu)
                 self.uaAction.setIcon(QIcon(getMedia("menu_installall")))
                 menu.addAction(self.uaAction)
                 menu.addSeparator()
-                
+
                 self.uninstallPackages = QAction(_("Installed Packages"),menu)
                 menu.addAction(self.uninstallPackages)
-                
+
                 self.installedMenu = menu.addMenu(_("0 packages found"))
                 self.installedMenu.menuAction().setIcon(QIcon(getMedia("list")))
                 self.installedMenu.setParent(menu)
                 globals.trayMenuInstalledList = self.installedMenu
                 menu.addMenu(self.installedMenu)
                 menu.addSeparator()
-                
+
                 globals.installedHeader = QAction(f"{_('App Name')}\t{_('Installed Version')}", menu)
                 globals.installedHeader.setIcon(QIcon(getMedia("version")))
                 globals.installedHeader.setEnabled(False)
                 self.installedMenu.addAction(globals.installedHeader)
-                
+
                 self.infoAction = QAction(_("About WingetUI version {0}").format(versionName), menu)
                 self.infoAction.setIcon(QIcon(getMedia("info")))
                 menu.addAction(self.infoAction)
@@ -321,23 +325,23 @@ try:
 
                 self.settings = QAction(_("WingetUI Settings"), menu)
                 menu.addAction(self.settings)
-                
+
 
                 self.quitAction = QAction(menu)
                 self.quitAction.setIcon(QIcon(getMedia("menu_close")))
                 self.quitAction.setText(_("Quit"))
                 self.quitAction.triggered.connect(lambda: (self.quit(), sys.exit(0)))
                 menu.addAction(self.quitAction)
-                
+
                 self.updatePackages.setIcon(QIcon(getMedia("alert_laptop")))
                 self.discoverPackages.setIcon(QIcon(getMedia("desktop_download")))
                 self.settings.setIcon(QIcon(getMedia("settings_gear")))
                 self.uninstallPackages.setIcon(QIcon(getMedia("workstation")))
-                
+
                 def showWindow():
                     # This function will be defined when the mainWindow gets defined
                     pass
-                
+
                 def showMenu():
                     pos = QCursor.pos()   
                     s = self.screenAt(pos)
@@ -351,8 +355,9 @@ try:
                             menu.move(pos)
                     else:
                         menu.exec(pos)
+
                 self.trayIcon.activated.connect(lambda r: (applyMenuStyle(), showMenu()) if r == QSystemTrayIcon.Context else showWindow())
-                
+
                 self.trayIcon.messageClicked.connect(lambda: showWindow())
                 self.installedMenu.aboutToShow.connect(lambda: applyMenuStyle())
                 self.updatesMenu.aboutToShow.connect(lambda: applyMenuStyle())
@@ -393,22 +398,26 @@ try:
                         if not getSettings("AlreadyWarnedAboutAdmin"):
                             self.window.warnAboutAdmin()
                             setSettings("AlreadyWarnedAboutAdmin", True)
-                            
+
             except Exception as e:
                 import webbrowser, traceback, platform
                 try:
                     from tools import version as appversion
                 except Exception as e:
                     appversion = "Unknown"
-                os_info = f"" + \
-                    f"                        OS: {platform.system()}\n"+\
-                    f"                   Version: {platform.win32_ver()}\n"+\
-                    f"           OS Architecture: {platform.machine()}\n"+\
-                    f"          APP Architecture: {platform.architecture()[0]}\n"+\
-                    f"               APP Version: {appversion}\n"+\
-                    f"                   Program: WingetUI\n"+\
-                    f"           Program section: UI Loading"+\
-                    "\n\n-----------------------------------------------------------------------------------------"
+                os_info = (
+                    (
+                        f""
+                        + f"                        OS: {platform.system()}\n"
+                        + f"                   Version: {platform.win32_ver()}\n"
+                        + f"           OS Architecture: {platform.machine()}\n"
+                        + f"          APP Architecture: {platform.architecture()[0]}\n"
+                        + f"               APP Version: {appversion}\n"
+                        + f"                   Program: WingetUI\n"
+                        + "           Program section: UI Loading"
+                    )
+                    + "\n\n-----------------------------------------------------------------------------------------"
+                )
                 traceback_info = "Traceback (most recent call last):\n"
                 try:
                     for line in traceback.extract_tb(e.__traceback__).format():
@@ -446,10 +455,12 @@ try:
         def instanceThread(self):
             while True:
                 try:
-                    for file in glob.glob(os.path.join(os.path.join(os.path.expanduser("~"), ".wingetui"), "RaiseWindow_*")):
-                        if getSettings("RaiseWindow_"+str(self.nowTime), cache = False):
+                    for _ in glob.glob(os.path.join(os.path.join(os.path.expanduser("~"), ".wingetui"), "RaiseWindow_*")):
+                        if getSettings(
+                            f"RaiseWindow_{str(self.nowTime)}", cache=False
+                        ):
                             print("🟢 Found reactivation lock file...")
-                            setSettings("RaiseWindow_"+str(self.nowTime), False)
+                            setSettings(f"RaiseWindow_{str(self.nowTime)}", False)
                             if not self.window.isMaximized():
                                 self.callInMain.emit(self.window.hide)
                                 self.callInMain.emit(self.window.showMinimized)
@@ -468,52 +479,53 @@ try:
                 time.sleep(0.5)
 
         def updateIfPossible(self):
-            if not getSettings("DisableAutoUpdateWingetUI"):
-                print("🔵 Starting update check")
-                integrityPass = False
-                dmname = socket.gethostbyname_ex("versions.marticliment.com")[0]
-                if(dmname == dmname): # Check provider IP to prevent exploits
-                    integrityPass = True
-                try:
-                    response = urlopen("https://versions.marticliment.com/versions/wingetui.ver")
-                except Exception as e:
-                    print(e)
-                    response = urlopen("http://www.marticliment.com/versions/wingetui.ver")
-                    integrityPass = True
-                print("🔵 Version URL:", response.url)
-                response = response.read().decode("utf8")
-                new_version_number = response.split("///")[0]
-                provided_hash = response.split("///")[1].replace("\n", "").lower()
-                if float(new_version_number) > version:
-                    print("🟢 Updates found!")
-                    updatesAvailable = True
-                    if(integrityPass):
-                        url = "https://github.com/marticliment/WingetUI/releases/latest/download/WingetUI.Installer.exe"
-                        filedata = urlopen(url)
-                        datatowrite = filedata.read()
-                        filename = ""
-                        with open(os.path.join(os.path.expanduser("~"), "WingetUI-Updater.exe"), 'wb') as f:
-                            f.write(datatowrite)
-                            filename = f.name
-                        if(hashlib.sha256(datatowrite).hexdigest().lower() == provided_hash):
-                            print("🔵 Hash: ", provided_hash)
-                            print("🟢 Hash ok, starting update")
-                            globals.updatesAvailable = True
-                            globals.canUpdate = not self.window.isVisible()
-                            while not globals.canUpdate:
-                                time.sleep(0.1)
-                            if not getSettings("DisableAutoUpdateWingetUI"):
-                                subprocess.run('start /B "" "{0}" /silent'.format(filename), shell=True)
-                        else:
-                            print("🟠 Hash not ok")
-                            print("🟠 File hash: ", hashlib.sha256(datatowrite).hexdigest())
-                            print("🟠 Provided hash: ", provided_hash)
+            if getSettings("DisableAutoUpdateWingetUI"):
+                return
+            print("🔵 Starting update check")
+            integrityPass = False
+            dmname = socket.gethostbyname_ex("versions.marticliment.com")[0]
+            if(dmname == dmname): # Check provider IP to prevent exploits
+                integrityPass = True
+            try:
+                response = urlopen("https://versions.marticliment.com/versions/wingetui.ver")
+            except Exception as e:
+                print(e)
+                response = urlopen("http://www.marticliment.com/versions/wingetui.ver")
+                integrityPass = True
+            print("🔵 Version URL:", response.url)
+            response = response.read().decode("utf8")
+            new_version_number = response.split("///")[0]
+            provided_hash = response.split("///")[1].replace("\n", "").lower()
+            if float(new_version_number) > version:
+                print("🟢 Updates found!")
+                updatesAvailable = True
+                if(integrityPass):
+                    url = "https://github.com/marticliment/WingetUI/releases/latest/download/WingetUI.Installer.exe"
+                    filedata = urlopen(url)
+                    datatowrite = filedata.read()
+                    filename = ""
+                    with open(os.path.join(os.path.expanduser("~"), "WingetUI-Updater.exe"), 'wb') as f:
+                        f.write(datatowrite)
+                        filename = f.name
+                    if(hashlib.sha256(datatowrite).hexdigest().lower() == provided_hash):
+                        print("🔵 Hash: ", provided_hash)
+                        print("🟢 Hash ok, starting update")
+                        globals.updatesAvailable = True
+                        globals.canUpdate = not self.window.isVisible()
+                        while not globals.canUpdate:
+                            time.sleep(0.1)
+                        if not getSettings("DisableAutoUpdateWingetUI"):
+                            subprocess.run('start /B "" "{0}" /silent'.format(filename), shell=True)
                     else:
-                        print("🟠 Can't verify update server authenticity, aborting")
-                        print("🟠 Provided DmName:", dmname)
-                        print("🟠 Expected DmNane: 769432b9-3560-4f94-8f90-01c95844d994.id.repl.co")
+                        print("🟠 Hash not ok")
+                        print("🟠 File hash: ", hashlib.sha256(datatowrite).hexdigest())
+                        print("🟠 Provided hash: ", provided_hash)
                 else:
-                    print("🟢 Updates not found")
+                    print("🟠 Can't verify update server authenticity, aborting")
+                    print("🟠 Provided DmName:", dmname)
+                    print("🟠 Expected DmNane: 769432b9-3560-4f94-8f90-01c95844d994.id.repl.co")
+            else:
+                print("🟢 Updates not found")
 
     colors = getColors()
     isW11 = False

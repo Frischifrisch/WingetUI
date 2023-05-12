@@ -15,11 +15,10 @@ def searchForPackage(signal: Signal, finishSignal: Signal) -> None:
     counter = 0
     while p.poll() is None:
         line = p.stdout.readline()
-        line = line.strip()
-        if line:
-            if(counter > 1 and not b"---" in line):
-                output.append(ansi_escape.sub('',                 #print(line, ansi_escape.sub('', str(line, encoding='utf-8', errors="ignore")))
-str(line, encoding='utf-8', errors="ignore")))
+        if line := line.strip():
+            if counter > 1 and b"---" not in line:
+                                output.append(ansi_escape.sub('',                 #print(line, ansi_escape.sub('', str(line, encoding='utf-8', errors="ignore")))
+                str(line, encoding='utf-8', errors="ignore")))
             else:
                 counter += 1
     counter = 0
@@ -28,7 +27,7 @@ str(line, encoding='utf-8', errors="ignore")))
         try:
             signal.emit(element.split(" ")[0].strip() if lc else element.split(" ")[0].strip().capitalize(), f"{element.split(' ')[0].strip()}", list(filter(None, element.split(" ")))[1].strip(), f"Scoop: {list(filter(None, element.split(' ')))[2].strip()}")
         except IndexError as e:
-            print("IndexError: "+str(e))
+            print(f"IndexError: {str(e)}")
     print("🟢 Scoop search finished")
     finishSignal.emit("scoop")
 
@@ -40,9 +39,8 @@ def searchForInstalledPackage(signal: Signal, finishSignal: Signal) -> None:
     counter = 1
     while p.poll() is None:
         line = p.stdout.readline()
-        line = line.strip()
-        if line:
-            if(counter > 1 and not b"---" in line):
+        if line := line.strip():
+            if counter > 1 and b"---" not in line:
                 output.append(ansi_escape.sub('', str(line, encoding='utf-8', errors="ignore").strip()))
             else:
                 counter += 1
@@ -56,7 +54,7 @@ def searchForInstalledPackage(signal: Signal, finishSignal: Signal) -> None:
             if(len(items)>=2):
                 signal.emit(items[0] if lc else items[0].capitalize(), f"{items[0]}", items[1], f"Scoop: {list(filter(None, element.split(' ')))[2].strip()}")
         except IndexError as e:
-            print("IndexError: "+str(e))
+            print(f"IndexError: {str(e)}")
         except Exception as e:
             print(e)
     print("🟢 Scoop search finished")
@@ -69,9 +67,8 @@ def searchForUpdates(signal: Signal, finishSignal: Signal) -> None:
     counter = 0
     while p.poll() is None:
         line = p.stdout.readline()
-        line = line.strip()
-        if line:
-            if(counter > 1 and not b"---" in line):
+        if line := line.strip():
+            if counter > 1 and b"---" not in line:
                 output.append(ansi_escape.sub('', str(line, encoding='utf-8', errors="ignore").strip()))
             else:
                 counter += 1
@@ -85,7 +82,15 @@ def searchForUpdates(signal: Signal, finishSignal: Signal) -> None:
         if "Name" in element:
             continue
         try:
-            signal.emit(element.split(" ")[0].strip() if lc else element.split(" ")[0].strip().capitalize(), f"{element.split(' ')[0].strip()}", list(filter(None, element.split(" ")))[1].strip(), list(filter(None, element.split(" ")))[2].strip(), f"Scoop")
+            signal.emit(
+                element.split(" ")[0].strip()
+                if lc
+                else element.split(" ")[0].strip().capitalize(),
+                f"{element.split(' ')[0].strip()}",
+                list(filter(None, element.split(" ")))[1].strip(),
+                list(filter(None, element.split(" ")))[2].strip(),
+                "Scoop",
+            )
         except Exception as e:
             report(e)
     print("🟢 Scoop search finished")
@@ -117,8 +122,7 @@ def getInfo(signal: Signal, title: str, id: str, useId: bool, verbose: bool = Fa
     while p.poll() is None:
         pass
     for line in p.stdout.readlines():
-        line = line.strip()
-        if line:
+        if line := line.strip():
             output.append(ansi_escape.sub('', str(line, encoding='utf-8', errors="ignore")))
     manifest = False
     version = ""
@@ -170,7 +174,7 @@ def getInfo(signal: Signal, title: str, id: str, useId: bool, verbose: bool = Fa
                     print("🟡 No description found in the manifest")
             except Exception as e:
                 print(type(e), e)
-    print(f"🔵 Scoop does not support specific version installs")
+    print("🔵 Scoop does not support specific version installs")
     appInfo["versions"] = [version]
     appInfo["title"] = appInfo["title"] if lc else appInfo["title"].capitalize()
     signal.emit(appInfo)
@@ -184,8 +188,7 @@ def installAssistant(p: subprocess.Popen, closeAndInform: Signal, infoSignal: Si
     while p.poll() is None:
         line = p.stdout.readline()
         line = line.strip()
-        line = str(line, encoding='utf-8', errors="ignore").strip()
-        if line:
+        if line := str(line, encoding='utf-8', errors="ignore").strip():
             if("Installing" in line):
                 counterSignal.emit(1)
             elif("] 100%" in line or "Downloading" in line):
@@ -193,12 +196,12 @@ def installAssistant(p: subprocess.Popen, closeAndInform: Signal, infoSignal: Si
             elif("was installed successfully!" in line):
                 counterSignal.emit(6)
             infoSignal.emit(line)
-            if("was installed successfully" in line):
-                outputCode = 0
-            elif ("is already installed" in line):
+            if ("was installed successfully" in line) or (
+                "is already installed" in line
+            ):
                 outputCode = 0
             output += line+"\n"
-    if "-g" in output and not "successfully" in output:
+    if "-g" in output and "successfully" not in output:
         outputCode = 1602
     elif "requires admin rights" in output:
         outputCode = 1603
@@ -212,8 +215,7 @@ def uninstallAssistant(p: subprocess.Popen, closeAndInform: Signal, infoSignal: 
     while p.poll() is None:
         line = p.stdout.readline()
         line = line.strip()
-        line = str(line, encoding='utf-8', errors="ignore").strip()
-        if line:
+        if line := str(line, encoding='utf-8', errors="ignore").strip():
             if("Uninstalling" in line):
                 counterSignal.emit(1)
             elif("Removing shim for" in line):
@@ -224,7 +226,7 @@ def uninstallAssistant(p: subprocess.Popen, closeAndInform: Signal, infoSignal: 
             if("was uninstalled" in line):
                 outputCode = 0
             output += line+"\n"
-    if "-g" in output and not "successfully" in output:
+    if "-g" in output and "successfully" not in output:
         outputCode = 1602
     elif "requires admin rights" in output:
         outputCode = 1603
@@ -238,9 +240,8 @@ def loadBuckets(packageSignal: Signal, finishSignal: Signal) -> None:
     counter = 0
     while p.poll() is None:
         line = p.stdout.readline()
-        line = line.strip()
-        if line:
-            if(counter > 1 and not b"---" in line):
+        if line := line.strip():
+            if counter > 1 and b"---" not in line:
                 output.append(ansi_escape.sub('', str(line, encoding='utf-8', errors="ignore")))
             else:
                 counter += 1
@@ -251,14 +252,19 @@ def loadBuckets(packageSignal: Signal, finishSignal: Signal) -> None:
             while "  " in element.strip():
                 element = element.strip().replace("  ", " ")
             element: list[str] = element.split(" ")
-            packageSignal.emit(element[0].strip(), element[1].strip(), element[2].strip()+" "+element[3].strip(), element[4].strip())
+            packageSignal.emit(
+                element[0].strip(),
+                element[1].strip(),
+                f"{element[2].strip()} {element[3].strip()}",
+                element[4].strip(),
+            )
         except IndexError as e:
             try:
                 packageSignal.emit(element[0].strip(), element[1].strip(), "Unknown", "Unknown")
             except IndexError as f:
                 cprint(e, f)
             print(element)
-            print("IndexError: "+str(e))
+            print(f"IndexError: {str(e)}")
 
     print("🟢 Scoop bucket search finished")
     finishSignal.emit()

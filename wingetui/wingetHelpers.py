@@ -21,9 +21,8 @@ def searchForPackage(signal: Signal, finishSignal: Signal, noretry: bool = False
     idSeparator = 0
     while p.poll() is None:
         line = p.stdout.readline()
-        line = line.strip()
-        if line:
-            if(counter > 0):
+        if line := line.strip():
+            if (counter > 0):
                 output.append(str(line, encoding='utf-8', errors="ignore"))
             else:
                 l = str(line, encoding='utf-8', errors="ignore").replace("\x08-\x08\\\x08|\x08 \r","")
@@ -66,13 +65,28 @@ def searchForPackage(signal: Signal, finishSignal: Signal, noretry: bool = False
                 if ver.strip() in ("<", "-", ""):
                     iOffset += 1
                     ver = verElement.split(" ")[iOffset+1]
-                if not "  " in element[0:idSeparator].strip():
-                    signal.emit(element[0:idSeparator].strip(), id, ver, "Winget")
+                if "  " not in element[:idSeparator].strip():
+                    signal.emit(element[:idSeparator].strip(), id, ver, "Winget")
                 else:
-                    print(f"🟡 package {element[0:idSeparator].strip()} failed parsing, going for method 2...")
+                    print(
+                        f"🟡 package {element[:idSeparator].strip()} failed parsing, going for method 2..."
+                    )
                     element = bytes(element, "utf-8")
                     print(element, verSeparator)
-                    export = (element[0:idSeparator], str(element[idSeparator:], "utf-8").strip().split(" ")[0], list(filter(None, str(element[idSeparator:], "utf-8").strip().split(" ")))[1])
+                    export = (
+                        element[:idSeparator],
+                        str(element[idSeparator:], "utf-8")
+                        .strip()
+                        .split(" ")[0],
+                        list(
+                            filter(
+                                None,
+                                str(element[idSeparator:], "utf-8")
+                                .strip()
+                                .split(" "),
+                            )
+                        )[1],
+                    )
                     signal.emit(str(export[0], "utf-8").strip(), export[1], export[2], "Winget")
             except Exception as e:
                 try:
@@ -81,7 +95,12 @@ def searchForPackage(signal: Signal, finishSignal: Signal, noretry: bool = False
                         element = str(element, "utf-8")
                     except Exception as e:
                         print(e)
-                    signal.emit(element[0:idSeparator].strip(), element[idSeparator:verSeparator].strip(), element[verSeparator:].split(" ")[0].strip(), "Winget")
+                    signal.emit(
+                        element[:idSeparator].strip(),
+                        element[idSeparator:verSeparator].strip(),
+                        element[verSeparator:].split(" ")[0].strip(),
+                        "Winget",
+                    )
                 except Exception as e:
                     report(e)
         print("🟢 Winget search finished")
@@ -94,10 +113,9 @@ def searchForOnlyOnePackage(id: str) -> tuple[str, str]:
     idSeparator = 0
     while p.poll() is None:
         line = p.stdout.readline()
-        line = line.strip()
-        if line:
-            if(counter > 0):
-                if not b"---" in line:
+        if line := line.strip():
+            if (counter > 0):
+                if b"---" not in line:
                     return str(line[:idSeparator], "utf-8", errors="ignore").strip(), str(line[idSeparator:], "utf-8", errors="ignore").split(" ")[0].strip()
             else:
                 l = str(line, encoding='utf-8', errors="ignore").replace("\x08-\x08\\\x08|\x08 \r","")
@@ -114,16 +132,24 @@ def searchForOnlyOnePackage(id: str) -> tuple[str, str]:
 
 def searchForUpdates(signal: Signal, finishSignal: Signal, noretry: bool = False) -> None:
     print(f"🟢 Starting winget search, winget on {winget}...")
-    p = subprocess.Popen(["mode", "400,30&", winget, "upgrade", "--include-unknown"] + common_params[0:2], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, cwd=os.getcwd(), env=os.environ.copy(), shell=True)
+    p = subprocess.Popen(
+        ["mode", "400,30&", winget, "upgrade", "--include-unknown"]
+        + common_params[:2],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        stdin=subprocess.PIPE,
+        cwd=os.getcwd(),
+        env=os.environ.copy(),
+        shell=True,
+    )
     output = []
     counter = 0
     idSeparator = 0
     while p.poll() is None:
         line = p.stdout.readline()  # type: ignore
-        line = line.strip()
-        if line:
-            if(counter > 0):
-                if not b"upgrades available" in line:
+        if line := line.strip():
+            if (counter > 0):
+                if b"upgrades available" not in line:
                     output.append(line)
             else:
                 l = str(line, encoding='utf-8', errors="ignore").replace("\x08-\x08\\\x08|\x08 \r","")
@@ -135,7 +161,7 @@ def searchForUpdates(signal: Signal, finishSignal: Signal, noretry: bool = False
                     verSeparator = len(l.split("Version")[0])
                     newVerSeparator = len(l.split("Available")[0])
                     counter += 1
-    
+
     if p.returncode != 0 and not noretry:
         time.sleep(1)
         print(p.returncode)
@@ -162,21 +188,35 @@ def searchForUpdates(signal: Signal, finishSignal: Signal, noretry: bool = False
                     iOffset += 1
                     ver = verElement.split(" ")[iOffset+1]
                     newver = verElement.split(" ")[iOffset+2]
-                if not "  " in element[0:idSeparator].strip():
-                    signal.emit(element[0:idSeparator].strip(), id, ver, newver, "Winget")
+                if "  " not in element[:idSeparator].strip():
+                    signal.emit(element[:idSeparator].strip(), id, ver, newver, "Winget")
                 else:
-                    print(f"🟡 package {element[0:idSeparator].strip()} failed parsing, going for method 2...")
+                    print(
+                        f"🟡 package {element[:idSeparator].strip()} failed parsing, going for method 2..."
+                    )
                     print(element, verSeparator)
-                    name = element[0:idSeparator].strip().replace("  ", "#").replace("# ", "#").replace(" #", "#")
+                    name = (
+                        element[:idSeparator]
+                        .strip()
+                        .replace("  ", "#")
+                        .replace("# ", "#")
+                        .replace(" #", "#")
+                    )
                     while "##" in name:
                         name = name.replace("##", "#")
                     signal.emit(name.split("#")[0], name.split("#")[-1]+id, ver, newver, "Winget")
             except Exception as e:
                 try:
-                    signal.emit(element[0:idSeparator].strip(), element[idSeparator:verSeparator].strip(), element[verSeparator:newVerSeparator].split(" ")[0].strip(), element[newVerSeparator:].split(" ")[0].strip(), "Winget")
-                except Exception as e:
-                    report(e)
-                except Exception as e:
+                    signal.emit(
+                        element[:idSeparator].strip(),
+                        element[idSeparator:verSeparator].strip(),
+                        element[verSeparator:newVerSeparator]
+                        .split(" ")[0]
+                        .strip(),
+                        element[newVerSeparator:].split(" ")[0].strip(),
+                        "Winget",
+                    )
+                except (Exception, Exception) as e:
                     report(e)
         print("🟢 Winget search finished")
         finishSignal.emit("winget")

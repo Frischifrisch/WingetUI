@@ -4,7 +4,7 @@ import json
 import re
 import subprocess
 
-os.chdir(os.path.dirname(__file__) + "/..") # move to root project
+os.chdir(f"{os.path.dirname(__file__)}/..")
 
 os.chdir("WebBasedData")
 
@@ -18,10 +18,9 @@ def getwingetPackages():
     idSeparator = 0
     while p.poll() is None:
         line = p.stdout.readline()
-        line = line.strip()
-        if line:
-            if(counter > 0):
-                if not b"---" in line:
+        if line := line.strip():
+            if (counter > 0):
+                if b"---" not in line:
                     output.append(str(line, encoding='utf-8', errors="ignore"))
             else:
                 l = str(line, encoding='utf-8', errors="ignore").replace("\x08-\x08\\\x08|\x08 \r","")
@@ -46,13 +45,18 @@ def getwingetPackages():
             if len(id)==1:
                 iOffset + 1
                 id = verElement.split(" ")[iOffset+0]
-            if not "  " in element[0:idSeparator].strip():
+            if "  " not in element[:idSeparator].strip():
                 packageList.append(id)
             else:
-                print(f"🟡 package {element[0:idSeparator].strip()} failed parsing, going for method 2...")
+                print(
+                    f"🟡 package {element[:idSeparator].strip()} failed parsing, going for method 2..."
+                )
                 element = bytes(element, "utf-8")
                 print(element, verSeparator)
-                export = (element[0:idSeparator], str(element[idSeparator:], "utf-8").strip().split(" ")[0], )
+                export = (
+                    element[:idSeparator],
+                    str(element[idSeparator:], "utf-8").strip().split(" ")[0],
+                )
                 packageList.append(export[1])
         except Exception as e:
             try:
@@ -77,9 +81,8 @@ def getScoopPackages():
     counter = 0
     while p.poll() is None:
         line = p.stdout.readline()
-        line = line.strip()
-        if line:
-            if(counter > 1 and not b"---" in line):
+        if line := line.strip():
+            if counter > 1 and b"---" not in line:
                 output.append(ansi_escape.sub('', str(line, encoding='utf-8', errors="ignore")))
             else:
                 counter += 1
@@ -88,7 +91,7 @@ def getScoopPackages():
         try:
             pkgs.append(element.split(" ")[0].strip())
         except IndexError as e:
-            print("IndexError: "+str(e))
+            print(f"IndexError: {str(e)}")
     print("🟢 Scoop search finished")
     return sorted(pkgs)
 
@@ -161,11 +164,11 @@ def getRow(n):
 
 counter = 3
 for id in getwingetPackages():
-    worksheet.write("A"+str(counter), "Winget", idformat)
-    worksheet.write("B"+str(counter), id, idformat)
+    worksheet.write(f"A{str(counter)}", "Winget", idformat)
+    worksheet.write(f"B{str(counter)}", id, idformat)
     try:
         item = contents["winget"][id]
-        worksheet.write("C"+str(counter), str(item["icon"]), iconformat)
+        worksheet.write(f"C{str(counter)}", str(item["icon"]), iconformat)
         for i in range(3, len(item["images"])+3):
             worksheet.write(getRow(i)+str(counter), item["images"][i-3], screenshotformat)
     except KeyError:
@@ -174,11 +177,11 @@ for id in getwingetPackages():
 
 
 for id in getScoopPackages():
-    worksheet.write("A"+str(counter), "Scoop", idformat)
-    worksheet.write("B"+str(counter), id, idformat)
+    worksheet.write(f"A{str(counter)}", "Scoop", idformat)
+    worksheet.write(f"B{str(counter)}", id, idformat)
     try:
         item = contents["winget"][id]
-        worksheet.write("C"+str(counter), str(item["icon"]), iconformat)
+        worksheet.write(f"C{str(counter)}", str(item["icon"]), iconformat)
         for i in range(3, len(item["images"])+3):
             worksheet.write(getRow(i)+str(counter), item["images"][i-3], screenshotformat)
     except KeyError:

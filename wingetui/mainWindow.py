@@ -29,7 +29,7 @@ class RootWindow(QMainWindow):
         self.setWindowTitle("WingetUI")
         self.setMinimumSize(700, 560)
         self.setObjectName("micawin")
-        self.setWindowIcon(QIcon(realpath+"/resources/icon.png"))
+        self.setWindowIcon(QIcon(f"{realpath}/resources/icon.png"))
         self.resize(QSize(1100, 700))
         try:
             rs = getSettingsValue("OldWindowGeometry").split(",")
@@ -55,7 +55,7 @@ class RootWindow(QMainWindow):
             QGroupBox:title{{ max-width: 0; max-height: 0; }}
         """)
 
-        
+
         print("🟢 Main application loaded...")
 
     def loadWidgets(self) -> None:
@@ -185,8 +185,8 @@ class RootWindow(QMainWindow):
         btn.setFixedWidth(170)
         btn.clicked.connect(lambda: self.mainWidget.setCurrentIndex(i))
         if self.oldbtn:
-            self.oldbtn.setStyleSheet("" + self.oldbtn.styleSheet())
-            btn.setStyleSheet("" + btn.styleSheet())
+            self.oldbtn.setStyleSheet(f"{self.oldbtn.styleSheet()}")
+            btn.setStyleSheet(f"{btn.styleSheet()}")
         self.oldbtn = btn
         if addToMenu:
             btn.action.setIcon(QIcon(getMedia(actionIcon)))
@@ -233,47 +233,44 @@ class RootWindow(QMainWindow):
             globals.themeChanged = False
             self.deleteChildren()
             event.accept()
-        if(globals.pending_programs != []):
-            if getSettings("DisablesystemTray"):
-                if(QMessageBox.question(self, _("Warning"), _("There is an installation in progress. If you close WingetUI, the installation may fail and have unexpected results. Do you still want to quit WingetUI?"), QMessageBox.No | QMessageBox.Yes, QMessageBox.No) == QMessageBox.Yes):
-                    if globals.updatesAvailable:
-                        self.hide()
-                        globals.canUpdate = True
-                        globals.trayIcon.showMessage(_("Updating WingetUI"), _("WingetUI is being updated. When finished, WingetUI will restart itself"), QIcon(getMedia("notif_info")))
-                        event.ignore()
-                    else:
-                        self.deleteChildren()
-                        event.accept()
-                        globals.app.quit()
-                        sys.exit(0)
-                else:
-                    event.ignore()
+        if globals.pending_programs == []:
+            if globals.updatesAvailable:
+                self.hide()
+                globals.canUpdate = True
+                globals.trayIcon.showMessage(_("Updating WingetUI"), _("WingetUI is being updated. When finished, WingetUI will restart itself"), QIcon(getMedia("notif_info")))
+                event.ignore()
+            elif getSettings("DisablesystemTray"):
+                self.deleteChildren()
+                event.accept()
+                globals.app.quit()
+                sys.exit(0)
             else:
+                self.hide()
+                globals.lastFocusedWindow = 0
+                event.ignore()
+
+        elif getSettings("DisablesystemTray"):
+            if(QMessageBox.question(self, _("Warning"), _("There is an installation in progress. If you close WingetUI, the installation may fail and have unexpected results. Do you still want to quit WingetUI?"), QMessageBox.No | QMessageBox.Yes, QMessageBox.No) == QMessageBox.Yes):
                 if globals.updatesAvailable:
                     self.hide()
                     globals.canUpdate = True
                     globals.trayIcon.showMessage(_("Updating WingetUI"), _("WingetUI is being updated. When finished, WingetUI will restart itself"), QIcon(getMedia("notif_info")))
                     event.ignore()
                 else:
-                    self.hide()
-                    globals.lastFocusedWindow = 0
-                    event.ignore()
-        else:
-            if globals.updatesAvailable:
-                self.hide()
-                globals.canUpdate = True
-                globals.trayIcon.showMessage(_("Updating WingetUI"), _("WingetUI is being updated. When finished, WingetUI will restart itself"), QIcon(getMedia("notif_info")))
-                event.ignore()
-            else:
-                if getSettings("DisablesystemTray"):
                     self.deleteChildren()
                     event.accept()
                     globals.app.quit()
                     sys.exit(0)
-                else:
-                    self.hide()
-                    globals.lastFocusedWindow = 0
-                    event.ignore()
+            else:
+                event.ignore()
+        else:
+            self.hide()
+            if globals.updatesAvailable:
+                globals.canUpdate = True
+                globals.trayIcon.showMessage(_("Updating WingetUI"), _("WingetUI is being updated. When finished, WingetUI will restart itself"), QIcon(getMedia("notif_info")))
+            else:
+                globals.lastFocusedWindow = 0
+            event.ignore()
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         try:
@@ -283,13 +280,13 @@ class RootWindow(QMainWindow):
             pass
         try:
             s = self.infobox.size()
-            if self.height()-100 >= 650:
+            if self.height() >= 750:
                 self.infobox.setFixedHeight(650)     
                 self.infobox.move((self.width()-s.width())//2, (self.height()-650)//2)
             else:
                 self.infobox.setFixedHeight(self.height()-100)
                 self.infobox.move((self.width()-s.width())//2, 50)
-                
+
             self.infobox.iv.resize(self.width()-100, self.height()-100)
 
         except AttributeError:
