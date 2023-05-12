@@ -67,8 +67,10 @@ class DiscoverSoftwareSection(QWidget):
         self.forceCheckBox.setStyleSheet("margin-top: 0px;")
         self.forceCheckBox.setChecked(True)
         self.forceCheckBox.setChecked(not getSettings("DisableInstantSearchOnInstall"))
-        self.forceCheckBox.clicked.connect(lambda v: setSettings("DisableInstantSearchOnInstall", bool(not v)))
-         
+        self.forceCheckBox.clicked.connect(
+            lambda v: setSettings("DisableInstantSearchOnInstall", not v)
+        )
+
         self.query = CustomLineEdit()
         self.query.setPlaceholderText(" "+_("Search for packages"))
         self.query.returnPressed.connect(self.filter)
@@ -83,7 +85,7 @@ class DiscoverSoftwareSection(QWidget):
 
         sct = QShortcut(QKeySequence("Ctrl+R"), self)
         sct.activated.connect(self.reload)
-        
+
         sct = QShortcut(QKeySequence("F5"), self)
         sct.activated.connect(self.reload)
 
@@ -179,7 +181,7 @@ class DiscoverSoftwareSection(QWidget):
         header.setSectionResizeMode(3, QHeaderView.Fixed)
         self.packageList.setColumnWidth(2, 150)
         self.packageList.setColumnWidth(3, 150)
-        
+
         self.loadingProgressBar = QProgressBar()
         self.loadingProgressBar.setRange(0, 1000)
         self.loadingProgressBar.setValue(0)
@@ -208,7 +210,7 @@ class DiscoverSoftwareSection(QWidget):
         self.upgradeSelected = QAction(QIcon(getMedia("newversion")), "", self.toolbar)
         self.upgradeSelected.triggered.connect(lambda: self.fastinstall(self.packageList.currentItem().text(0), self.packageList.currentItem().text(1), self.packageList.currentItem().text(3).lower(), packageItem=self.packageList.currentItem()))
         self.toolbar.addAction(self.upgradeSelected)
-        
+
         inf = QAction("", self.toolbar)# ("Show info")
         inf.triggered.connect(lambda: self.openInfo(self.packageList.currentItem().text(0), self.packageList.currentItem().text(1), self.packageList.currentItem().text(3).lower(), self.packageList.currentItem()))
         inf.setIcon(QIcon(getMedia("info")))
@@ -222,7 +224,7 @@ class DiscoverSoftwareSection(QWidget):
         ins4.setIcon(QIcon(getMedia("interactive")))
         ins4.triggered.connect(lambda: self.fastinstall(self.packageList.currentItem().text(0), self.packageList.currentItem().text(1), self.packageList.currentItem().text(3).lower(), packageItem=self.packageList.currentItem(), interactive=True))
 
-        
+
         tooltips = {
             self.upgradeSelected: _("Install package"),
             inf: _("Show package info"),
@@ -274,11 +276,11 @@ class DiscoverSoftwareSection(QWidget):
         self.setLoadBarValue.connect(self.loadingProgressBar.setValue)
         self.startAnim.connect(lambda anim: anim.start())
         self.changeBarOrientation.connect(lambda: self.loadingProgressBar.setInvertedAppearance(not(self.loadingProgressBar.invertedAppearance())))
-        
+
         self.reloadButton.setEnabled(False)
         self.searchButton.setEnabled(False)
         self.query.setEnabled(False)
-        
+
         self.installIcon = QIcon(getMedia("install"))
         self.IDIcon = QIcon(getMedia("ID"))
         self.versionIcon = QIcon(getMedia("newversion"))
@@ -297,22 +299,22 @@ class DiscoverSoftwareSection(QWidget):
         print("🟢 Discover tab loaded")
 
         g = self.packageList.geometry()
-            
-        
+
+
         self.leftSlow = QVariantAnimation()
         self.leftSlow.setStartValue(0)
         self.leftSlow.setEndValue(1000)
         self.leftSlow.setDuration(700)
         self.leftSlow.valueChanged.connect(lambda v: self.loadingProgressBar.setValue(v))
         self.leftSlow.finished.connect(lambda: (self.rightSlow.start(), self.changeBarOrientation.emit()))
-        
+
         self.rightSlow = QVariantAnimation()
         self.rightSlow.setStartValue(1000)
         self.rightSlow.setEndValue(0)
         self.rightSlow.setDuration(700)
         self.rightSlow.valueChanged.connect(lambda v: self.loadingProgressBar.setValue(v))
         self.rightSlow.finished.connect(lambda: (self.leftFast.start(), self.changeBarOrientation.emit()))
-        
+
         self.leftFast = QVariantAnimation()
         self.leftFast.setStartValue(0)
         self.leftFast.setEndValue(1000)
@@ -326,27 +328,24 @@ class DiscoverSoftwareSection(QWidget):
         self.rightFast.setDuration(300)
         self.rightFast.valueChanged.connect(lambda v: self.loadingProgressBar.setValue(v))
         self.rightFast.finished.connect(lambda: (self.leftSlow.start(), self.changeBarOrientation.emit()))
-        
+
         self.leftSlow.start()
 
     def importPackages(self):
         try:
-            packageList = []
             file = QFileDialog.getOpenFileName(self, _("Select package file"), filter="JSON (*.json)")[0]
             if file != "":
-                f = open(file, "r")
-                contents = json.load(f)
-                f.close()
+                with open(file, "r") as f:
+                    contents = json.load(f)
+                packageList = []
                 try:
                     packages = contents["winget"]["Sources"][0]["Packages"]
-                    for pkg in packages:
-                        packageList.append(pkg["PackageIdentifier"])
+                    packageList.extend(pkg["PackageIdentifier"] for pkg in packages)
                 except KeyError as e:
                     print("🟠 Invalid winget section")
                 try:
                     packages = contents["scoop"]["apps"]
-                    for pkg in packages:
-                        packageList.append(pkg["Name"])
+                    packageList.extend(pkg["Name"] for pkg in packages)
                 except KeyError as e:
                     print("🟠 Invalid scoop section")
                 for packageId in packageList:
@@ -359,18 +358,7 @@ class DiscoverSoftwareSection(QWidget):
             report(e)
         
     def finishLoadingIfNeeded(self, store: str) -> None:
-        if(store == "winget"):
-            self.countLabel.setText(_("Found packages: {0}, not finished yet...").format(str(self.packageList.topLevelItemCount())))
-            if self.packageList.topLevelItemCount() == 0:
-                self.packageList.label.setText(self.countLabel.text())
-            else:
-                self.packageList.label.setText("")
-            self.wingetLoaded = True
-            self.reloadButton.setEnabled(True)
-            self.filter()
-            self.searchButton.setEnabled(True)
-            self.query.setEnabled(True)
-        elif(store == "scoop"):
+        if store == "scoop":
             self.countLabel.setText(_("Found packages: {0}, not finished yet...").format(str(self.packageList.topLevelItemCount())))
             if self.packageList.topLevelItemCount() == 0:
                 self.packageList.label.setText(self.countLabel.text())
@@ -381,19 +369,30 @@ class DiscoverSoftwareSection(QWidget):
             self.filter()
             self.searchButton.setEnabled(True)
             self.query.setEnabled(True)
-        if(self.wingetLoaded and self.scoopLoaded):
+        elif store == "winget":
+            self.countLabel.setText(_("Found packages: {0}, not finished yet...").format(str(self.packageList.topLevelItemCount())))
+            if self.packageList.topLevelItemCount() == 0:
+                self.packageList.label.setText(self.countLabel.text())
+            else:
+                self.packageList.label.setText("")
+            self.wingetLoaded = True
+            self.reloadButton.setEnabled(True)
+            self.filter()
+            self.searchButton.setEnabled(True)
+            self.query.setEnabled(True)
+        if (self.wingetLoaded and self.scoopLoaded):
             self.filter()
             self.loadingProgressBar.hide()
             self.countLabel.setText(_("Found packages: {0}").format(str(self.packageList.topLevelItemCount())))
             self.packageList.label.setText("")
-            print("🟢 Total packages: "+str(self.packageList.topLevelItemCount()))
+            print(f"🟢 Total packages: {str(self.packageList.topLevelItemCount())}")
 
     def resizeEvent(self, event: QResizeEvent):
         self.adjustWidgetsSize()
         return super().resizeEvent(event)
 
     def addItem(self, name: str, id: str, version: str, store) -> None:
-        if not "---" in name:
+        if "---" not in name:
             item = TreeWidgetItemWithQAction()
             if "scoop" in store.lower():
                 item.setText(0, name.replace("-", " ").capitalize())
@@ -428,7 +427,7 @@ class DiscoverSoftwareSection(QWidget):
         resultsFound += self.packageList.findItems(self.query.text(), Qt.MatchContains, 1)
         found = 0
         for item in self.packageList.findItems('', Qt.MatchContains, 0):
-            if not(item in resultsFound):
+            if item not in resultsFound:
                 item.setHidden(True)
             else:
                 item.setHidden(False)
@@ -437,10 +436,9 @@ class DiscoverSoftwareSection(QWidget):
             if self.packageList.label.text() == "":
                 self.packageList.label.show()
                 self.packageList.label.setText(_("No packages found matching the input criteria"))
-        else:
-            if self.packageList.label.text() == _("No packages found matching the input criteria"):
-                self.packageList.label.hide()
-                self.packageList.label.setText("")
+        elif self.packageList.label.text() == _("No packages found matching the input criteria"):
+            self.packageList.label.hide()
+            self.packageList.label.setText("")
         self.packageList.scrollToItem(self.packageList.currentItem())
     
     def showQuery(self) -> None:
@@ -448,14 +446,44 @@ class DiscoverSoftwareSection(QWidget):
         self.infobox.hide()
 
     def openInfo(self, title: str, id: str, store: str, packageItem: TreeWidgetItemWithQAction) -> None:
-        self.infobox.loadProgram(title, id, useId=not("…" in id), store=store, packageItem=packageItem)
+        self.infobox.loadProgram(
+            title, id, useId="…" not in id, store=store, packageItem=packageItem
+        )
         self.infobox.show()
 
     def fastinstall(self, title: str, id: str, store: str, admin: bool = False, interactive: bool = False, skiphash: bool = False, packageItem: TreeWidgetItemWithQAction = None) -> None:
-        if not "scoop" in store.lower():
-                self.addInstallation(PackageInstallerWidget(title, "winget", useId=not("…" in id), packageId=id, admin=admin, args=list(filter(None, ["--interactive" if interactive else "--silent", "--force" if skiphash else ""])), packageItem=packageItem))
+        if "scoop" not in store.lower():
+            self.addInstallation(
+                PackageInstallerWidget(
+                    title,
+                    "winget",
+                    useId="…" not in id,
+                    packageId=id,
+                    admin=admin,
+                    args=list(
+                        filter(
+                            None,
+                            [
+                                "--interactive" if interactive else "--silent",
+                                "--force" if skiphash else "",
+                            ],
+                        )
+                    ),
+                    packageItem=packageItem,
+                )
+            )
         else:
-                self.addInstallation(PackageInstallerWidget(title, store, useId=not("…" in id), packageId=id, admin=admin, args=["--skip" if skiphash else ""], packageItem=packageItem))
+            self.addInstallation(
+                PackageInstallerWidget(
+                    title,
+                    store,
+                    useId="…" not in id,
+                    packageId=id,
+                    admin=admin,
+                    args=["--skip" if skiphash else ""],
+                    packageItem=packageItem,
+                )
+            )
     
     def reload(self) -> None:
         self.packageReference = {}
@@ -502,10 +530,9 @@ class DiscoverSoftwareSection(QWidget):
             if not self.discoverLabelIsSmall:
                 self.discoverLabelIsSmall = True
                 self.discoverLabel.setStyleSheet(f"font-size: 15pt;font-family: \"{globals.dispfont}\";font-weight: bold;")
-        else:
-            if self.discoverLabelIsSmall:
-                self.discoverLabelIsSmall = False
-                self.discoverLabel.setStyleSheet(f"font-size: 30pt;font-family: \"{globals.dispfont}\";font-weight: bold;")
+        elif self.discoverLabelIsSmall:
+            self.discoverLabelIsSmall = False
+            self.discoverLabel.setStyleSheet(f"font-size: 30pt;font-family: \"{globals.dispfont}\";font-weight: bold;")
 
         self.forceCheckBox.setFixedWidth(self.forceCheckBox.sizeHint().width()+10)
         if self.toolbarDefaultWidth == 0:
@@ -515,10 +542,9 @@ class DiscoverSoftwareSection(QWidget):
                 if not self.isToolbarSmall:
                     self.isToolbarSmall = True
                     self.toolbar.setToolButtonStyle(Qt.ToolButtonIconOnly)
-            else:
-                if self.isToolbarSmall:
-                    self.isToolbarSmall = False
-                    self.toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+            elif self.isToolbarSmall:
+                self.isToolbarSmall = False
+                self.toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.forceCheckBox.setFixedWidth(self.forceCheckBox.sizeHint().width()+10)
 
 class UpdateSoftwareSection(QWidget):
@@ -957,7 +983,7 @@ class UpdateSoftwareSection(QWidget):
             self.reloadButton.setEnabled(True)
             self.searchButton.setEnabled(True)
             self.query.setEnabled(True)
-        if(self.wingetLoaded and self.scoopLoaded):
+        if (self.wingetLoaded and self.scoopLoaded):
             self.loadingProgressBar.hide()
             self.loadingProgressBar.hide()
             globals.trayMenuUpdatesList.menuAction().setText(_("Available updates: {0}").format(str(self.packageList.topLevelItemCount())))
@@ -988,7 +1014,7 @@ class UpdateSoftwareSection(QWidget):
                     print(f"🟡 Can't get custom interval time! (got value was '{getSettingsValue('UpdatesCheckInterval')}')")
                     waitTime = 3600
                 Thread(target=lambda: (time.sleep(waitTime), self.reloadSources()), daemon=True, name="AutoCheckForUpdates Thread").start()
-            print("🟢 Total packages: "+str(self.packageList.topLevelItemCount()))
+            print(f"🟢 Total packages: {str(self.packageList.topLevelItemCount())}")
 
     def resizeEvent(self, event: QResizeEvent):
         self.adjustWidgetsSize()
@@ -1003,53 +1029,54 @@ class UpdateSoftwareSection(QWidget):
         self.callInMain.emit(partial(item.setText, 5, store))
 
     def addItem(self, name: str, id: str, version: str, newVersion: str, store) -> None:
-        if not "---" in name:
-            if not id in self.blacklist:
-                item = TreeWidgetItemWithQAction()
-                item.setText(1, name)
-                item.setIcon(1, self.installIcon)
-                item.setText(2, id)
-                item.setIcon(2, self.IDIcon)
-                item.setText(3, version)
-                item.setIcon(3, self.versionIcon)
-                item.setText(4, newVersion)
-                item.setIcon(4, self.newVersionIcon)
-                if "scoop" in store.lower():
-                    try:
-                        if version == globals.uninstall.packages[id]["version"]:
-                            store = globals.uninstall.packages[id]["store"]
-                        item.setText(5, store)
-                    except KeyError as e:
-                        item.setText(5, _("Loading..."))
-                        print(f"🟡 Package {id} found in the updates section but not in the installed one, might be a temporal issue, retrying in 3 seconds...")
-                        Thread(target=self.changeStore, args=(item, store, id)).start()
-                else:
+        if "---" in name:
+            return
+        if id not in self.blacklist:
+            item = TreeWidgetItemWithQAction()
+            item.setText(1, name)
+            item.setIcon(1, self.installIcon)
+            item.setText(2, id)
+            item.setIcon(2, self.IDIcon)
+            item.setText(3, version)
+            item.setIcon(3, self.versionIcon)
+            item.setText(4, newVersion)
+            item.setIcon(4, self.newVersionIcon)
+            if "scoop" in store.lower():
+                try:
+                    if version == globals.uninstall.packages[id]["version"]:
+                        store = globals.uninstall.packages[id]["store"]
                     item.setText(5, store)
-
-                
-                self.packages[id] = {
-                    "name": name,
-                    "version": version,
-                    "newVersion": newVersion,
-                    "store": store,
-                }
-                if "scoop" in store.lower():
-                    item.setIcon(5, self.scoopIcon)
-                else:
-                    item.setIcon(5, self.wingetIcon)
-                self.packageList.addTopLevelItem(item)
-                c = QCheckBox()
-                c.setChecked(True)
-                c.setStyleSheet("margin-top: 1px; margin-left: 8px;")
-                c.stateChanged.connect(lambda: item.setText(0, str(" " if c.isChecked() else "")))
-                self.packageList.setItemWidget(item, 0, c)
-                action = QAction(name+"  \t"+version+"\t → \t"+newVersion, globals.trayMenuUpdatesList)
-                action.triggered.connect(lambda : self.update(name, id, store, packageItem=item))
-                action.setShortcut(version)
-                item.setAction(action)
-                globals.trayMenuUpdatesList.addAction(action)
+                except KeyError as e:
+                    item.setText(5, _("Loading..."))
+                    print(f"🟡 Package {id} found in the updates section but not in the installed one, might be a temporal issue, retrying in 3 seconds...")
+                    Thread(target=self.changeStore, args=(item, store, id)).start()
             else:
-                print(id,"was blackisted")
+                item.setText(5, store)
+
+
+            self.packages[id] = {
+                "name": name,
+                "version": version,
+                "newVersion": newVersion,
+                "store": store,
+            }
+            if "scoop" in store.lower():
+                item.setIcon(5, self.scoopIcon)
+            else:
+                item.setIcon(5, self.wingetIcon)
+            self.packageList.addTopLevelItem(item)
+            c = QCheckBox()
+            c.setChecked(True)
+            c.setStyleSheet("margin-top: 1px; margin-left: 8px;")
+            c.stateChanged.connect(lambda: item.setText(0, " " if c.isChecked() else ""))
+            self.packageList.setItemWidget(item, 0, c)
+            action = QAction(name+"  \t"+version+"\t → \t"+newVersion, globals.trayMenuUpdatesList)
+            action.triggered.connect(lambda : self.update(name, id, store, packageItem=item))
+            action.setShortcut(version)
+            item.setAction(action)
+            globals.trayMenuUpdatesList.addAction(action)
+        else:
+            print(id,"was blackisted")
     
     def filter(self) -> None:
         resultsFound = self.packageList.findItems(self.query.text(), Qt.MatchContains, 1)
@@ -1057,7 +1084,7 @@ class UpdateSoftwareSection(QWidget):
         print(f"🟢 Searching for string \"{self.query.text()}\"")
         found = 0
         for item in self.packageList.findItems('', Qt.MatchContains, 1):
-            if not(item in resultsFound):
+            if item not in resultsFound:
                 item.setHidden(True)
                 item.treeWidget().itemWidget(item, 0).hide()
             else:
@@ -1072,10 +1099,9 @@ class UpdateSoftwareSection(QWidget):
             if self.packageList.label.text() == "":
                 self.packageList.label.show()
                 self.packageList.label.setText(_("No packages found matching the input criteria"))
-        else:
-            if self.packageList.label.text() == _("No packages found matching the input criteria"):
-                self.packageList.label.hide()
-                self.packageList.label.setText("")
+        elif self.packageList.label.text() == _("No packages found matching the input criteria"):
+            self.packageList.label.hide()
+            self.packageList.label.setText("")
         self.packageList.scrollToItem(self.packageList.currentItem())
 
     def updatePackageNumber(self, showQueried: bool = False, foundResults: int = 0):
@@ -1124,20 +1150,59 @@ class UpdateSoftwareSection(QWidget):
                         pass
     
     def update(self, title: str, id: str, store: str, all: bool = False, selected: bool = False, packageItem: TreeWidgetItemWithQAction = None, admin: bool = False, skiphash: bool = False, interactive: bool = False) -> None:
-            if not "scoop" in store.lower():
-                    self.addInstallation(PackageUpdaterWidget(title, "winget", useId=not("…" in id), packageId=id, packageItem=packageItem, admin=admin, args=list(filter(None, ["--interactive" if interactive else "--silent", "--force" if skiphash else ""]))))
-            else:
-                    self.addInstallation(PackageUpdaterWidget(title, store,  useId=not("…" in id), packageId=id, packageItem=packageItem, admin=admin, args=["--skip" if skiphash else ""]))
+        if "scoop" not in store.lower():
+            self.addInstallation(
+                PackageUpdaterWidget(
+                    title,
+                    "winget",
+                    useId="…" not in id,
+                    packageId=id,
+                    packageItem=packageItem,
+                    admin=admin,
+                    args=list(
+                        filter(
+                            None,
+                            [
+                                "--interactive" if interactive else "--silent",
+                                "--force" if skiphash else "",
+                            ],
+                        )
+                    ),
+                )
+            )
+        else:
+            self.addInstallation(
+                PackageUpdaterWidget(
+                    title,
+                    store,
+                    useId="…" not in id,
+                    packageId=id,
+                    packageItem=packageItem,
+                    admin=admin,
+                    args=["--skip" if skiphash else ""],
+                )
+            )
      
 
     def openInfo(self, title: str, id: str, store: str, packageItem: TreeWidgetItemWithQAction = None) -> None:
-        self.infobox.loadProgram(title, id, useId=not("…" in id), store=store, update=True, packageItem=packageItem)
+        self.infobox.loadProgram(
+            title,
+            id,
+            useId="…" not in id,
+            store=store,
+            update=True,
+            packageItem=packageItem,
+        )
         self.infobox.show()
 
     def reloadSources(self):
         print("Reloading sources...")
         try:
-            o1 = subprocess.run(f"powershell -Command scoop update", shell=True, stdout=subprocess.PIPE)
+            o1 = subprocess.run(
+                "powershell -Command scoop update",
+                shell=True,
+                stdout=subprocess.PIPE,
+            )
             print("Updated scoop packages with result", o1.returncode)
             o2 = subprocess.run(f"{wingetHelpers.winget} source update --name winget", shell=True, stdout=subprocess.PIPE)
             print("Updated Winget packages with result", o2.returncode)
@@ -1194,10 +1259,9 @@ class UpdateSoftwareSection(QWidget):
             if not self.discoverLabelIsSmall:
                 self.discoverLabelIsSmall = True
                 self.discoverLabel.setStyleSheet(f"font-size: 15pt;font-family: \"{globals.dispfont}\";font-weight: bold;")
-        else:
-            if self.discoverLabelIsSmall:
-                self.discoverLabelIsSmall = False
-                self.discoverLabel.setStyleSheet(f"font-size: 30pt;font-family: \"{globals.dispfont}\";font-weight: bold;")
+        elif self.discoverLabelIsSmall:
+            self.discoverLabelIsSmall = False
+            self.discoverLabel.setStyleSheet(f"font-size: 30pt;font-family: \"{globals.dispfont}\";font-weight: bold;")
 
         if self.toolbarDefaultWidth == 0:
             self.toolbarDefaultWidth = self.toolbar.sizeHint().width()+10
@@ -1205,10 +1269,9 @@ class UpdateSoftwareSection(QWidget):
             if not self.isToolbarSmall:
                 self.isToolbarSmall = True
                 self.toolbar.setToolButtonStyle(Qt.ToolButtonIconOnly)
-        else:
-            if self.isToolbarSmall:
-                self.isToolbarSmall = False
-                self.toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        elif self.isToolbarSmall:
+            self.isToolbarSmall = False
+            self.toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.forceCheckBox.setFixedWidth(self.forceCheckBox.sizeHint().width()+10)
         self.showUnknownSection.setFixedWidth(self.showUnknownSection.sizeHint().width()+10)
 
@@ -1631,12 +1694,14 @@ class UninstallSoftwareSection(QWidget):
                 self.callInMain.emit(partial(self.uninstall, program.text(1), program.text(2), program.text(4), packageItem=program, avoidConfirm=True))
 
     def openInfo(self, title: str, id: str, store: str, packageItem: TreeWidgetItemWithQAction) -> None:
-        self.infobox.loadProgram(title, id, useId=not("…" in id), store=store, packageItem=packageItem)
+        self.infobox.loadProgram(
+            title, id, useId="…" not in id, store=store, packageItem=packageItem
+        )
         self.infobox.show()
 
     def updatePackageNumber(self, showQueried: bool = False, foundResults: int = 0):
         self.foundPackages = 0
-        for item in self.packageList.findItems('', Qt.MatchContains, 1):
+        for _ in self.packageList.findItems('', Qt.MatchContains, 1):
             self.foundPackages += 1
         self.countLabel.setText(_("{0} packages found").format(self.foundPackages))
         globals.trayMenuInstalledList.menuAction().setText(_("{0} packages were found" if self.foundPackages!=1 else "{0} package was found").format(self.foundPackages))
@@ -1648,19 +1713,7 @@ class UninstallSoftwareSection(QWidget):
             self.packageList.label.show()
 
     def finishLoadingIfNeeded(self, store: str) -> None:
-        if(store == "winget"):
-            self.countLabel.setText(_("Found packages: {0}, not finished yet...").format(str(self.packageList.topLevelItemCount())))
-            if self.packageList.topLevelItemCount() == 0:
-                self.packageList.label.setText(self.countLabel.text())
-            else:
-                self.packageList.label.setText("")
-            globals.trayMenuInstalledList.setTitle(_("{0} packages found").format(str(self.packageList.topLevelItemCount())))
-            self.wingetLoaded = True
-            self.reloadButton.setEnabled(True)
-            self.searchButton.setEnabled(True)
-            self.filter()
-            self.query.setEnabled(True)
-        elif(store == "scoop"):
+        if store == "scoop":
             self.countLabel.setText(_("Found packages: {0}, not finished yet...").format(str(self.packageList.topLevelItemCount())))
             if self.packageList.topLevelItemCount() == 0:
                 self.packageList.label.setText(self.countLabel.text())
@@ -1672,13 +1725,25 @@ class UninstallSoftwareSection(QWidget):
             self.filter()
             self.searchButton.setEnabled(True)
             self.query.setEnabled(True)
-        if(self.wingetLoaded and self.scoopLoaded):
+        elif store == "winget":
+            self.countLabel.setText(_("Found packages: {0}, not finished yet...").format(str(self.packageList.topLevelItemCount())))
+            if self.packageList.topLevelItemCount() == 0:
+                self.packageList.label.setText(self.countLabel.text())
+            else:
+                self.packageList.label.setText("")
+            globals.trayMenuInstalledList.setTitle(_("{0} packages found").format(str(self.packageList.topLevelItemCount())))
+            self.wingetLoaded = True
+            self.reloadButton.setEnabled(True)
+            self.searchButton.setEnabled(True)
+            self.filter()
+            self.query.setEnabled(True)
+        if (self.wingetLoaded and self.scoopLoaded):
             self.filter()
             self.loadingProgressBar.hide()
             globals.trayMenuInstalledList.setTitle(_("{0} packages found").format(str(self.packageList.topLevelItemCount())))
             self.countLabel.setText(_("Found packages: {0}").format(str(self.packageList.topLevelItemCount())))
             self.packageList.label.setText("")
-            print("🟢 Total packages: "+str(self.packageList.topLevelItemCount()))
+            print(f"🟢 Total packages: {str(self.packageList.topLevelItemCount())}")
 
     def adjustWidgetsSize(self) -> None:
         if self.discoverLabelDefaultWidth == 0:
@@ -1687,10 +1752,9 @@ class UninstallSoftwareSection(QWidget):
             if not self.discoverLabelIsSmall:
                 self.discoverLabelIsSmall = True
                 self.discoverLabel.setStyleSheet(f"font-size: 15pt;font-family: \"{globals.dispfont}\";font-weight: bold;")
-        else:
-            if self.discoverLabelIsSmall:
-                self.discoverLabelIsSmall = False
-                self.discoverLabel.setStyleSheet(f"font-size: 30pt;font-family: \"{globals.dispfont}\";font-weight: bold;")
+        elif self.discoverLabelIsSmall:
+            self.discoverLabelIsSmall = False
+            self.discoverLabel.setStyleSheet(f"font-size: 30pt;font-family: \"{globals.dispfont}\";font-weight: bold;")
 
         if self.toolbarDefaultWidth == 0:
             self.toolbarDefaultWidth = self.toolbar.sizeHint().width()+2
@@ -1699,10 +1763,9 @@ class UninstallSoftwareSection(QWidget):
                 if not self.isToolbarSmall:
                     self.isToolbarSmall = True
                     self.toolbar.setToolButtonStyle(Qt.ToolButtonIconOnly)
-            else:
-                if self.isToolbarSmall:
-                    self.isToolbarSmall = False
-                    self.toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+            elif self.isToolbarSmall:
+                self.isToolbarSmall = False
+                self.toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.forceCheckBox.setFixedWidth(self.forceCheckBox.sizeHint().width()+10)
 
     def resizeEvent(self, event: QResizeEvent):

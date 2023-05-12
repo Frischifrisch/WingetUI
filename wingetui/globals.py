@@ -16,8 +16,8 @@ class Section(QWidget):
     def __init__(self, parent = None) -> None:
         super().__init__(parent, parent)
 
-    def addTreeWidgetItem(item: QTreeWidgetItem):
-       pass
+    def addTreeWidgetItem(self):
+        pass
 
 componentStatus: dict = {
     "wingetFound": False,

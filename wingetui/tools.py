@@ -50,23 +50,29 @@ def report(exception) -> None: # Exception reporter
     tb = traceback.format_exception(*sys.exc_info())
     try:
         for line in tb:
-            print("🔴 "+line)
-            cprint("🔴 "+line)
+            print(f"🔴 {line}")
+            cprint(f"🔴 {line}")
         print(f"🔴 Note this traceback was caught by reporter and has been added to the log ({exception})")
     except UnicodeEncodeError:
         for line in tb:
-            print("ERROR "+line)
-            cprint("ERROR "+line)
+            print(f"ERROR {line}")
+            cprint(f"ERROR {line}")
         print(f"ERROR Note this traceback was caught by reporter and has been added to the log ({exception})")
 
 def _(s): # Translate function
     global lang
     try:
         t = lang[s]
-        return ("🟢"+t+"🟢" if debugLang else t) if t else f"🟡{s}🟡" if debugLang else eng_(s)
+        return (
+            (f"🟢{t}🟢" if debugLang else t)
+            if t
+            else f"🟡{s}🟡"
+            if debugLang
+            else eng_(s)
+        )
     except KeyError:
         if debugLang: print(s)
-        if not s in missingTranslationList:
+        if s not in missingTranslationList:
             missingTranslationList.append(s)
         return f"🔴{eng_(s)}🔴" if debugLang else eng_(s)
 
@@ -112,11 +118,11 @@ def getSettingsValue(s: str):
     global settingsCache
     try:
         try:
-            return settingsCache[s+"Value"]
+            return settingsCache[f"{s}Value"]
         except KeyError:
             with open(os.path.join(os.path.join(os.path.expanduser("~"), ".wingetui"), s), "r") as sf:
                 v = sf.read()
-                settingsCache[s+"Value"] = v
+                settingsCache[f"{s}Value"] = v
                 return v
     except FileNotFoundError:
         return ""
@@ -184,10 +190,7 @@ def isDark() -> bool:
             return False      
     return readRegedit(r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "AppsUseLightTheme", 1)==0
 
-if isDark():
-    blueColor = f"rgb({getColors()[1]})"
-else:
-    blueColor = f"rgb({getColors()[4]})"
+blueColor = f"rgb({getColors()[1]})" if isDark() else f"rgb({getColors()[4]})"
 
 def queueProgram(id: str):
     globals.pending_programs.append(id)
@@ -213,7 +216,7 @@ def checkQueue():
 
 
 def ApplyMenuBlur(hwnd: int, window: QWidget, smallCorners: bool = False, avoidOverrideStyleSheet: bool = False, shadow: bool = True, useTaskbarModeCheck: bool = False):
-    hwnd = int(hwnd)
+    hwnd = hwnd
     mode = isDark()
     isW11 = False
     try:
@@ -231,13 +234,8 @@ def ApplyMenuBlur(hwnd: int, window: QWidget, smallCorners: bool = False, avoidO
             window.setStyleSheet(f'#{window.objectName()}{{ background-color: {"transparent" if isW11 else "rgba(20, 20, 20, 25%);border-radius: 0px;" };}}')
     if mode:
         GlobalBlur(hwnd, Acrylic=True, hexColor="#21212140", Dark=True, smallCorners=smallCorners)
-        if shadow:
-            pass
-            #QtWin.extendFrameIntoClientArea(window, -1, -1, -1, -1)
     else:
         GlobalBlur(hwnd, Acrylic=True, hexColor="#eeeeee40", Dark=True, smallCorners=smallCorners)
-        if shadow: 
-            pass
             #QtWin.extendFrameIntoClientArea(window, -1, -1, -1, -1)
 
 
@@ -248,9 +246,9 @@ def getIconMode() -> str:
     return "white" if isDark() else "black"
 
 def getMedia(m: str) -> str:
-    filename = getPath(m+"_"+getIconMode()+".png")
+    filename = getPath(f"{m}_{getIconMode()}.png")
     if not os.path.exists(filename):
-        filename = getPath(m+".png")
+        filename = getPath(f"{m}.png")
     return filename
 
 def getint(s: str, fallback: int) -> int:
@@ -287,7 +285,6 @@ class KillableThread(Thread):
     def localtrace(self, frame, event, arg): 
         if not(self.shouldBeRuning) and event == 'line': 
             raise SystemExit()
-            print("Killed")
         return self.localtrace 
 
 
@@ -302,8 +299,7 @@ def genericInstallAssistant(p: subprocess.Popen, closeAndInform: Signal, infoSig
     while p.poll() is None:
         line = p.stdout.readline()
         line = line.strip()
-        line = str(line, encoding='utf-8', errors="ignore").strip()
-        if line:
+        if line := str(line, encoding='utf-8', errors="ignore").strip():
             output += line+"\n"
             infoSignal.emit(line)
             print(line)
@@ -354,10 +350,10 @@ if getSettingsValue("PreferredLanguage") == "":
 
 def loadLangFile(file: str, bundled: bool = False) -> dict:
     try:
-        path = os.path.join(os.path.expanduser("~"), ".wingetui/lang/"+file)
+        path = os.path.join(os.path.expanduser("~"), f".wingetui/lang/{file}")
         if not os.path.exists(path) or getSettings("DisableLangAutoUpdater") or bundled:
             print(f"🟡 Using bundled lang file (forced={bundled})")
-            path = getPath("../lang/"+file)
+            path = getPath(f"../lang/{file}")
         else:
             print("🟢 Using cached lang file")
         with open(path, "r", encoding='utf-8') as file:
@@ -371,17 +367,24 @@ def updateLangFile(file: str):
     global lang
     try:
         try:
-            oldlang = open(os.path.join(os.path.expanduser("~"), ".wingetui/lang/"+file), "rb").read()
+            oldlang = open(
+                os.path.join(
+                    os.path.expanduser("~"), f".wingetui/lang/{file}"
+                ),
+                "rb",
+            ).read()
         except FileNotFoundError:
             oldlang = ""
-        newlang = urlopen("https://raw.githubusercontent.com/marticliment/WingetUI/main/wingetui/lang/"+file)
+        newlang = urlopen(
+            f"https://raw.githubusercontent.com/marticliment/WingetUI/main/wingetui/lang/{file}"
+        )
         if newlang.status == 200:
             langdata: bytes = newlang.read()
             if not os.path.isdir(os.path.join(os.path.expanduser("~"), ".wingetui/lang/")):
                 os.makedirs(os.path.join(os.path.expanduser("~"), ".wingetui/lang/"))
             if oldlang != langdata:
                 print("🟢 Updating outdated language file...")
-                with open(os.path.join(os.path.expanduser("~"), ".wingetui/lang/"+file), "wb") as f:
+                with open(os.path.join(os.path.expanduser("~"), f".wingetui/lang/{file}"), "wb") as f:
                     f.write(langdata)
                     f.close()
                     lang = loadLangFile(file) | {"locale": lang["locale"] if "locale" in lang.keys() else "en"}
@@ -396,7 +399,7 @@ langName = getSettingsValue("PreferredLanguage")
 try:
     if (langName == "default"):
         langName = locale.getdefaultlocale()[0]
-    langNames = [langName, langName[0:2]]
+    langNames = [langName, langName[:2]]
     langFound = False
     for ln in langNames:
         if (ln in languages):
@@ -426,7 +429,7 @@ except Exception as e:
     englang = {"locale": "en"}
 
 print(f"It took {time.time()-t0} to load all language files")
-            
+
 
 if __name__ == "__main__":
     import __init__

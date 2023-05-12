@@ -1,7 +1,7 @@
 import os, xlrd, json
 from urllib.request import urlopen
 
-os.chdir(os.path.dirname(__file__) + "/..") # move to root project
+os.chdir(f"{os.path.dirname(__file__)}/..")
 
 os.chdir("WebBasedData")
 
@@ -40,7 +40,7 @@ while not arrivedAtTheEnd:
     try:
         data = [worksheet.cell_value(i, 0).lower(), worksheet.cell_value(i, 1), worksheet.cell_value(i, 2), []]
         j = 3
-        while worksheet.cell_value(i, j) != "" and worksheet.cell_value(i, j) != None:
+        while worksheet.cell_value(i, j) not in ["", None]:
             data[3].append(worksheet.cell_value(i, j))
             j += 1
             if j >23:
@@ -67,7 +67,7 @@ while not arrivedAtTheEnd:
             }
 
         i += 1
-        if data[0] == "" or data[0] == None:
+        if data[0] == "" or data[0] is None:
             arrivedAtTheEnd = True
     except IndexError:
         arrivedAtTheEnd = True
@@ -79,7 +79,7 @@ jsoncontent["package_count"]["done"] = doneCount
 
 with open("screenshot-database.json", "w") as outfile:
     json.dump(jsoncontent, outfile, indent=4)
- 
+
 
 
 os.system("pause")

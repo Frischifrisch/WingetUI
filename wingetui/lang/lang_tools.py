@@ -93,9 +93,8 @@ def getMarkdownSupportLangs():
 
 def getTranslatorsFromCredits(translators: str) -> list:
     from data.contributors import contributors
-    if translators == None:
+    if translators is None:
         return []
-    credits: list = []
     translatorList = []
     translatorData = {}
     for translator in translators.split(","):
@@ -113,13 +112,12 @@ def getTranslatorsFromCredits(translators: str) -> list:
                 "link": link,
             }
     translatorList.sort(key=str.casefold)
-    for translator in translatorList:
-        credits.append(translatorData[translator])
+    credits: list = [translatorData[translator] for translator in translatorList]
     return credits
 
 
 def makeURLFromTranslatorList(translators: list) -> str:
-    if translators == None:
+    if translators is None:
         return ""
     credits: list[str] = []
     for translator in translators:
